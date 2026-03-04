@@ -27,7 +27,7 @@ app.post('/register', (req, res) => {
     password, 
     name, 
     photo: '', 
-    balance: 1000, // стартовый баланс
+    balance: 1000, 
     premiumUntil: null, 
     verified: false 
   };
