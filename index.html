@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vikhrify</title>
+  <title>Вихрифай</title>
   <style>
     body { 
       font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
@@ -90,14 +90,14 @@
 
 <script>
 let currentUser = null;
-let users = {}; // симуляция базы
-let posts = []; // [{id, username, text, likes:0, comments:[], isPremium:false, reactions:{'🔥':0,'😂':0}}]
+let users = {}; // симуляция базы на фронте (для отображения verified и т.д.)
+let posts = [];
 
 function showSection(section) {
   document.querySelectorAll('#feed, #chats, #profile').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById(section).classList.add('active');
-  document.querySelector(`nav button `).classList.add('active');
+  document.querySelector(`nav button[onclick="showSection('${section}')"]`).classList.add('active');
 
   if (section === 'feed') loadFeed();
   if (section === 'profile') loadProfile();
@@ -106,110 +106,172 @@ function showSection(section) {
 function register() {
   const u = document.getElementById('username').value.trim();
   const p = document.getElementById('password').value.trim();
-  if (!u || !p) return alert('Заполни всё, брат');
-  fetch('/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})})
-    .then(r => r.json()).then(d => {
-      if (d.success) loginAfterReg(u, p);
-      else alert(d.error || 'Что-то пошло не так');
-    });
+  if (!u || !p) return alert('Заполни юзернейм и пароль, брат');
+
+  fetch('/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: u, password: p})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert(d.message || 'Добро пожаловать в Vikhrify!');
+      loginAfterReg(u, p);
+    } else {
+      alert(d.error || 'Ошибка при регистрации');
+    }
+  })
+  .catch(err => alert('Ошибка сети: ' + err));
 }
 
 function login() {
   const u = document.getElementById('username').value.trim();
   const p = document.getElementById('password').value.trim();
+  if (!u || !p) return alert('Заполни поля');
+
   loginAfterReg(u, p);
 }
 
 function loginAfterReg(u, p) {
-  fetch('/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})})
-    .then(r => r.json()).then(d => {
-      if (d.success) {
-        currentUser = u;
-        document.getElementById('auth').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        loadFeed();
-      } else alert(d.error || 'Неправильно ввёл');
-    });
+  fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: u, password: p})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      currentUser = u;
+      document.getElementById('auth').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      loadFeed();
+      loadProfile(); // чтобы сразу подгрузить профиль
+    } else {
+      alert(d.error || 'Неверный логин или пароль');
+    }
+  })
+  .catch(err => alert('Ошибка сети: ' + err));
 }
 
 function loadFeed() {
-  fetch('/posts').then(r => r.json()).then(data => {
-    posts = data;
-    document.getElementById('posts').innerHTML = posts.map(p => `
-      <div class="post ${p.isPremium ? 'premium' : ''}">
-        <b>${p.username}${users ?.verified ? '<span class="verified"></span>' : ''}</b><br>
-        ${p.text}
-        <div>❤️ ${p.likes} | Комменты: ${p.comments.length}</div>
-        ${p.isPremium ? `<div class="reactions">🔥 ${p.reactions?.['🔥' '😂']||0}</div>` : ''}
-        <button onclick="likePost(${p.id})">Лайк</button>
-        <button onclick="commentPost(${p.id})">Коммент</button>
-        ${p.isPremium ? `<button onclick="reactPost(${p.id}, '🔥')">🔥</button><button onclick="reactPost(${p.id}, '😂')">😂</button>` : ''}
-      </div>
-    `).join('');
-  });
+  fetch('/posts')
+    .then(r => r.json())
+    .then(data => {
+      posts = data;
+      document.getElementById('posts').innerHTML = posts.map(p => `
+        <div class="post ${p.isPremium ? 'premium' : ''}">
+          <b>${p.username}${users[p.username]?.verified ? '<span class="verified"></span>' : ''}</b><br>
+          ${p.text}
+          <div>❤️ ${p.likes} | Комменты: ${p.comments.length}</div>
+          ${p.isPremium ? <div class="reactions">🔥 ${p.reactions?.['🔥']||0} 😂 ${p.reactions?.['😂']||0}</div> : ''}
+          <button onclick="likePost(${p.id})">Лайк</button>
+          <button onclick="commentPost(${p.id})">Коммент</button>
+          ${p.isPremium ? <button onclick="reactPost(${p.id}, '🔥')">🔥</button><button onclick="reactPost(${p.id}, '😂')">😂</button> : ''}
+        </div>
+      `).join('');
+    })
+    .catch(err => console.error('Ошибка загрузки ленты:', err));
 }
 
 function addPost() {
   const text = prompt('Что на уме?');
   if (!text) return;
   const isPrem = confirm('Сделать премиум-пост? (доп. реакции)');
-  fetch('/posts', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, text, isPremium:isPrem})})
-    .then(r => r.json()).then(() => loadFeed());
+  fetch('/posts', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: currentUser, text, isPremium: isPrem})
+  })
+  .then(() => loadFeed())
+  .catch(err => alert('Ошибка при публикации'));
 }
 
 function likePost(id) {
-  fetch(`/posts/${id}/like`, {method:'POST'}).then(() => loadFeed());
+  fetch(`/posts/${id}/like`, {method: 'POST'})
+    .then(() => loadFeed());
 }
 
 function commentPost(id) {
   const text = prompt('Твой коммент:');
   if (!text) return;
-  fetch(`/posts/${id}/comment`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, text})})
-    .then(() => loadFeed());
+  fetch(`/posts/${id}/comment`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: currentUser, text})
+  })
+  .then(() => loadFeed());
 }
 
 function reactPost(id, emoji) {
-  fetch(`/posts/${id}/react`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({emoji})})
-    .then(() => loadFeed());
+  fetch(`/posts/${id}/react`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({emoji})
+  })
+  .then(() => loadFeed());
 }
 
 function loadProfile() {
-  fetch('/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser})})
-    .then(r => r.json()).then(user => {
+  fetch('/profile', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: currentUser})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      const user = d.user;
+      users[currentUser] = user; // сохраняем для отображения verified
       document.getElementById('name').textContent = user.name || user.username;
-      document.getElementById('username-display').textContent = user.username;
+      document.getElementById('username-display').textContent = currentUser;
       document.getElementById('balance').textContent = user.balance + ' VXR';
-      document.getElementById('premium-status').textContent = user.premiumUntil ? 'до ' + new Date(user.premiumUntil).toLocaleDateString() : 'нет';
+      document.getElementById('premium-status').textContent = user.premiumUntil 
+        ? 'до ' + new Date(user.premiumUntil).toLocaleDateString('ru-RU') 
+        : 'нет';
       document.getElementById('verified').innerHTML = user.verified ? '✓' : '';
-    });
+    }
+  });
 }
 
 function editProfile() {
   const newName = prompt('Новое имя:', document.getElementById('name').textContent);
   if (!newName) return;
-  fetch('/profile/update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, name:newName})})
-    .then(() => loadProfile());
+  fetch('/profile/update', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.
+      stringify({username: currentUser, name: newName})
+  })
+  .then(() => loadProfile());
 }
 
 function buyPremium() {
   const method = confirm('Платить VXR? (иначе рубли)') ? 'VXR' : 'RUB';
-  fetch('/premium/buy', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, method})})
-    .then(r => r.json()).then(d => {
-      if (d.success) {
-        alert(`Премиум на месяц куплен! До ${d.until}`);
-        loadProfile();
-      } else alert(d.error || 'Не хватило бабла');
-    });
+  fetch('/premium/buy', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: currentUser, method})
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert(`Премиум куплен до ${d.until}!`);
+      loadProfile();
+    } else {
+      alert(d.error || 'Не получилось купить');
+    }
+  });
 }
 
 function startChat() {
   const who = prompt('С кем чатить? @');
-  if (who) alert(`Чат с @${who} открыт. Пока без сообщений — добавь потом`);
+  if (who) alert(`Чат с @${who} открыт (пока заглушка)`);
 }
 
-// Автозагрузка ленты при старте
+// Инициализация
 window.onload = () => {
-  if (currentUser) showSection('feed');
+  // если уже залогинен (можно добавить localStorage позже)
 };
 </script>
 </body>
