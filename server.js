@@ -1,3 +1,25 @@
+const user = users.find(u => u.id === Number(id));
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+
+  if (balance !== undefined) {
+    const newBal = Number(balance);
+    if (isNaN(newBal)) return res.status(400).json({ error: 'Некорректный баланс' });
+    user.balance = newBal;
+  }
+
+  if (isVerified !== undefined) user.isVerified = Boolean(isVerified);
+  if (isBlocked !== undefined)   user.isBlocked   = Boolean(isBlocked);
+
+  res.json({ success: true, updatedUser: user });
+});
+
+app.listen(PORT, () => {
+  console.log(`Сервер запущен → порт ${PORT}`);
+  console.log(`Админка: http://localhost:${PORT}/admin`);
+  console.log(`(пароль админа: ${ADMIN_PASSWORD})`);
+});
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -9,36 +31,60 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Жёстко заданный пароль админа (в продакшене лучше хранить в .env + хеш)
+const ADMIN_PASSWORD = 'sehpy9-qiqjux-hofgyN';
+
+// Middleware для проверки пароля админа
+function checkAdminPassword(req, res, next) {
+  const providedPassword = req.headers['x-admin-password'] || req.query.password;
+
+  if (providedPassword !== ADMIN_PASSWORD) {
+    return res.status(403).json({ error: 'Неверный пароль админа' });
+  }
+  next();
+}
+
 app.use(cors());
 app.use(express.json());
-app.use(express.static(join(__dirname, 'public')));
 
-app.get('/', (req, res) => res.sendFile(join(__dirname, 'index.html')));
-app.get('/admin', (req, res) => res.sendFile(join(__dirname, 'admin.html')));
+// Статические файлы (html, css, js если будут)
+app.use(express.static(join(__dirname)));
 
-// Хранилище в памяти (пока без базы данных)
+// Главная страница
+app.get('/', (req, res) => {
+  res.sendFile(join(__dirname, 'index.html'));
+});
+
+// Админ-панель (отдаёт html только после проверки пароля в браузере)
+app.get('/admin', (req, res) => {
+  // Здесь можно сделать отдельную страницу ввода пароля, но для простоты пока пропускаем через заголовок
+  // В реальности лучше сделать форму логина админа
+  res.sendFile(join(__dirname, 'admin.html'));
+});
+
+// Хранилище в памяти (до рестарта сервера)
 let users = [];
 let posts = [];
 
-// Регистрация
+// ─── Регистрация ────────────────────────────────────────────────
 app.post('/api/register', (req, res) => {
-  const { username, password, name } = req.body;
+  const { username, password, name } = req.body || {};
 
   if (!username  !password  !name) {
-    return res.status(400).json({ error: "Заполни все поля" });
+    return res.status(400).json({ error: 'Заполни имя, юзернейм и пароль' });
   }
 
-  const lowerUsername = username.toLowerCase().trim();
-  if (users.some(u => u.username === lowerUsername)) {
-    return res.status(409).json({ error: "Юзернейм уже занят" });
+  const cleanUsername = username.trim().toLowerCase();
+  if (users.some(u => u.username === cleanUsername)) {
+    return res.status(409).json({ error: 'Юзернейм занят' });
   }
 
   const newUser = {
     id: users.length + 1,
-    username: lowerUsername,
+    username: cleanUsername,
     name: name.trim(),
-    password,               // В реальном проекте → bcrypt.hash!
-    avatar: https://i.pravatar.cc/150?u=${lowerUsername},
+    password, // В продакшене → bcrypt.hashSync(password, 10)
+    avatar: https://i.pravatar.cc/150?u=${cleanUsername},
     balance: 0,
     isPremium: false,
     isVerified: false,
@@ -49,37 +95,42 @@ app.post('/api/register', (req, res) => {
   res.json({ success: true, user: newUser });
 });
 
-// Логин
+// ─── Логин ──────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
-  const { username, password } = req.body;
-  const lowerUsername = username.toLowerCase().trim();
-  const user = users.find(u => u.username === lowerUsername && u.password === password);
+  const { username, password } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Введите логин и пароль' });
+  }
+
+  const cleanUsername = username.trim().toLowerCase();
+  const user = users.find(u => u.username === cleanUsername && u.password === password);
 
   if (!user) {
-    return res.status(401).json({ error: "Неверный логин или пароль" });
+    return res.status(401).json({ error: 'Неверные данные' });
   }
 
   res.json({ success: true, user });
 });
 
-// Получить данные текущего пользователя
+// ─── Мой профиль ────────────────────────────────────────────────
 app.get('/api/me/:id', (req, res) => {
-  const user = users.find(u => u.id == req.params.id);
-  if (!user) return res.status(404).json({ error: "Пользователь не найден" });
+  const user = users.find(u => u.id === Number(req.params.id));
+  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
   res.json(user);
 });
 
-// Получить посты пользователя
+// ─── Посты пользователя ─────────────────────────────────────────
 app.get('/api/posts/:userId', (req, res) => {
-  const userPosts = posts.filter(p => p.userId == req.params.userId);
+  const userPosts = posts.filter(p => p.userId === Number(req.params.userId));
   res.json(userPosts);
 });
 
-// Создать пост
 app.post('/api/posts', (req, res) => {
-  const { userId, content } = req.body;
+  const { userId, content } = req.body || {};
+
   if (!userId || !content?.trim()) {
-    return res.status(400).json({ error: "Нет данных для поста" });
+    return res.status(400).json({ error: 'Нет id пользователя или текста' });
   }
 
   const post = {
@@ -93,8 +144,17 @@ app.post('/api/posts', (req, res) => {
   res.json(post);
 });
 
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`Главная страница: http://localhost:${PORT}`);
-  console.log(`Админка: http://localhost:${PORT}/admin`);
+// ─── АДМИН ──────────────────────────────────────────────────────
+
+// Получить всех пользователей (только админ)
+app.get('/api/admin/users', checkAdminPassword, (req, res) => {
+  res.json(users);
 });
+
+// Обновить пользователя (баланс, верификация, бан)
+app.patch('/api/admin/update-user', checkAdminPassword, (req, res) => {
+  const { id, balance, isVerified, isBlocked } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Не указан id пользователя' });
+  }
