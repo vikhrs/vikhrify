@@ -5,314 +5,175 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vikhrify</title>
   <style>
-    :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --text: #c9d1d9;
-      --accent: #58a6ff;
-      --success: #238636;
-      --success-hover: #2ea043;
-      --border: #30363d;
-    }
-
-    * {
-      box-sizing: border-box;
+    body {
       margin: 0;
       padding: 0;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-
-    #auth {
-      position: fixed;
-      inset: 0;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       background: linear-gradient(135deg, #0d1117 0%, #0a0e14 100%);
+      color: #e0e0e0;
+      height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 1.5rem;
-      z-index: 100;
-      transition: opacity 0.5s ease;
     }
-
-    #auth.hidden {
-      opacity: 0;
-      pointer-events: none;
+    .container {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
     }
-
-    #app {
-      display: none;
-      padding: 1rem;
-      padding-bottom: 5rem;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-
-    h1, h2 {
-      color: var(--accent);
-      margin-bottom: 1rem;
-    }
-
-    .welcome {
-      font-size: 1.8rem;
+    h1 {
       text-align: center;
-      margin: 2rem 0 1.5rem;
-      color: var(--accent);
-      animation: fadeIn 1.2s ease-out;
+      color: #58a6ff;
+      margin: 0 0 32px;
+      font-size: 2.5rem;
+      font-weight: 700;
     }
-
     input {
       width: 100%;
-      max-width: 360px;
-      padding: 0.9rem 1.2rem;
-      border: 1px solid var(--border);
+      padding: 14px 16px;
+      margin: 12px 0;
+      border: 1px solid #30363d;
       border-radius: 8px;
-      background: var(--card);
+      background: #0d1117;
       color: white;
-      font-size: 1rem;
-      transition: border-color 0.2s;
+      font-size: 1.1rem;
     }
-
     input:focus {
       outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(88,166,255,0.2);
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.25);
     }
-
     button {
-      padding: 0.9rem 1.8rem;
-      font-size: 1rem;
-      font-weight: 600;
+      width: 100%;
+      padding: 14px;
+      margin: 12px 0;
       border: none;
       border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.25s;
     }
-
-    .btn-primary {
-      background: var(--success);
+    #signup-btn {
+      background: #238636;
       color: white;
     }
-
-    .btn-primary:hover {
-      background: var(--success-hover);
-      transform: translateY(-1px);
+    #signup-btn:hover {
+      background: #2ea043;
+      transform: translateY(-2px);
     }
-
-    .btn-secondary {
+    #login-btn {
       background: #444c56;
       color: white;
     }
-
-    .btn-secondary:hover {
+    #login-btn:hover {
       background: #586069;
-    }
-
-    .post {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.2rem;
-      margin-bottom: 1.2rem;
-      transition: transform 0.15s;
-    }
-
-    .post:hover {
       transform: translateY(-2px);
     }
-
-    .post-header {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-      margin-bottom: 0.8rem;
+    #status {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 1.1rem;
+      min-height: 30px;
     }
-
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #444;
-      background-size: cover;
-    }
-
-    .username {
-      font-weight: 600;
-      color: var(--accent);
-    }
-
-    nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(13,17,23,0.92);
-      backdrop-filter: blur(10px);
-      display: flex;
-      justify-content: space-around;
-      padding: 0.8rem 0;
-      border-top: 1px solid var(--border);
-      z-index: 90;
-    }
-
-    nav button {
-      background: none;
-      border: none;
-      color: #8b949e;
-      font-size: 0.9rem;
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      transition: color 0.2s;
-    }
-
-    nav button:hover,
-    nav button.active {
-      color: var(--accent);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 480px) {
-      #auth { gap: 1.2rem; }
-      input { max-width: 90%; }
-      button { width: 90%; max-width: 360px; }
-    }
+    .success { color: #3fb950; font-weight: bold; }
+    .error   { color: #f85149; font-weight: bold; }
+    .loading { color: #58a6ff; }
   </style>
 </head>
 <body>
 
-<div id="auth">
-  <h2>Vikhrify</h2>
-  <input id="username" placeholder="Username" type="text" autocomplete="off">
-  <input id="password" placeholder="Password" type="password" autocomplete="off">
-  <button class="btn-primary" onclick="register()">Sign Up</button>
-  <button class="btn-secondary" onclick="login()">Log In</button>
-</div>
+<div class="container">
+  <h1>Vikhrify</h1>
 
-<div id="app">
-  <h1 class="welcome">Добро пожаловать в Vikhrify!</h1>
-  <p style="text-align:center; color:#8b949e; margin-bottom:2rem;">
-    You are logged in as <strong id="current-user">...</strong>
-  </p>
+  <input id="username" placeholder="Юзернейм" type="text" autocomplete="off">
+  <input id="password" placeholder="Пароль" type="password" autocomplete="off">
 
-  <!-- Лента (пример постов) -->
-  <div id="feed">
-    <div class="post">
-      <div class="post-header">
-        <div class="avatar" style="background-image:url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100');"></div>
-        <span class="username">@alex_v</span>
-      </div>
-      <p>Just launched my new side project on Vikhrify 🔥 What do you think?</p>
-      <div style="margin-top:0.8rem; color:#8b949e;">❤️ 142 · 💬 28 · 2h ago</div>
-    </div>
+  <button id="signup-btn">Зарегистрироваться</button>
+  <button id="login-btn">Войти</button>
 
-    <div class="post">
-      <div class="post-header">
-        <div class="avatar" style="background-image:url('https://images.unsplash.com/photo-1552058544-f2b08422138a?w=100');"></div>
-        <span class="username">@maria_design</span>
-      </div>
-      <p>Dark mode vibes only 🌙 Who's with me?</p>
-      <div style="margin-top:0.8rem; color:#8b949e;">❤️ 89 · 💬 15 · 45m ago</div>
-    </div>
-  </div>
-
-  <!-- Нижняя навигация -->
-  <nav>
-    <button class="active">Feed</button>
-    <button>Chats</button>
-    <button>Profile</button>
-    <button onclick="createPost()">+</button>
-  </nav>
+  <div id="status"></div>
 </div>
 
 <script>
-console.log("Vikhrify — full version loaded");
+const statusEl = document.getElementById('status');
+const usernameEl = document.getElementById('username');
+const passwordEl = document.getElementById('password');
 
-function register() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+function show(text, type = 'info') {
+  statusEl.textContent = text;
+  statusEl.className = type;
+}
 
-  if (!username || !password) {
-    alert("Please enter username and password");
-    return;
-  }
+async function register() {
+  const u = usernameEl.value.trim();
+  const p = passwordEl.value.trim();
 
-  fetch("/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        alert(data.message || "Добро пожаловать в Vikhrify!");
-        showApp(username);
-      } else {
-        alert(data.error || "Registration failed (maybe username taken?)");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Cannot connect to server. Is backend running?");
+  if (!u || !p) return show('Заполни оба поля', 'error');
+
+  show('Регистрирую...', 'loading');
+
+  try {
+    const res = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
     });
+
+    const data = await res.json();
+
+    if (data.success) {
+      show('Добро пожаловать в Vikhrify!', 'success');
+      alert('Регистрация прошла! Теперь войди.');
+    } else {
+      show(data.error || 'Что-то пошло не так', 'error');
+    }
+  } catch (e) {
+    show('Сервер не отвечает — проверь Render', 'error');
+    console.error(e);
+  }
 }
 
-function login() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+async function login() {
+  const u = usernameEl.value.trim();
+  const p = passwordEl.value.trim();
 
-  if (!username || !password) {
-    alert("Please enter username and password");
-    return;
-  }
+  if (!u || !p) return show('Заполни оба поля', 'error');
 
-  fetch("/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        alert("Добро пожаловать в Vikhrify!");
-        showApp(username);
-      } else {
-        alert(data.error || "Wrong username or password");
-      }
-    })
-    .catch(err => {
-      console.error(err);
-      alert("Cannot connect to server");
+  show('Вхожу...', 'loading');
+
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
     });
-}
 
-function showApp(username) {
-  document.getElementById("auth").classList.add("hidden");
-  setTimeout(() => {
-    document.getElementById("auth").style.display = "none";
-    document.getElementById("app").style.display = "block";
-  }, 500);
+    const data = await res.json();
 
-  document.getElementById("current-user").textContent = username;
-}
-
-function createPost() {
-  const text = prompt("What's on your mind?");
-  if (text) {
-    alert("Post created (in real version it would go to server):\n\n" + text);
-    // Здесь можно добавить fetch('/posts', ...) когда бэкенд готов
+    if (data.success) {
+      show('Вход выполнен! Добро пожаловать в Vikhrify!', 'success');
+      alert('Ты внутри! (можно добавить переход в ленту)');
+    } else {
+      show(data.error || 'Неверный логин или пароль', 'error');
+    }
+  } catch (e) {
+    show('Сервер не отвечает — проверь Render', 'error');
+    console.error(e);
   }
 }
+
+document.getElementById('signup-btn').onclick = register;
+document.getElementById('login-btn').onclick = login;
+
+// Для удобства — enter тоже работает
+passwordEl.addEventListener('keypress', e => {
+  if (e.key === 'Enter') register();
+});
 </script>
 </body>
 </html>
