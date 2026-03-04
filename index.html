@@ -38,8 +38,8 @@
   <h1>Добро пожаловать в Vikhrify!</h1>
   <input id="username" placeholder="Юзернейм" type="text">
   <input id="password" placeholder="Пароль" type="password">
-  <button class="btn-reg" onclick="reg()">Зарегистрироваться</reg>
-  <button class="btn-log" onclick="log()">Войти</log>
+  <button class="btn-reg" onclick="reg()">Зарегистрироваться</button>
+  <button class="btn-log" onclick="log()">Войти</button>
   <div id="msg"></div>
 </div>
 
@@ -79,123 +79,156 @@
     <button onclick="showSection('profile')">Профиль</button>
   </nav>
 </div>
+
+<script>
   let currentUser = null;
-const msg = document.getElementById('msg');
+  const msg = document.getElementById('msg');
+  const auth = document.getElementById('auth');
+  const app = document.getElementById('app');
 
-async function reg() {
-  msg.innerHTML = '';
-  const u = document.getElementById('username').value.trim();
-  const p = document.getElementById('password').value;
-  if (!u || !p) return msg.innerHTML = '<span class="err">Заполни всё</span>';
-  msg.innerHTML = '<span class="ok">Регистрирую...</span>';
-  try {
-    const r = await fetch('/register', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
-    const d = await r.json();
-    msg.innerHTML = d.success ? '<span class="ok">Готово! Заходи</span>' : '<span class="err">' + (d.error || 'Ошибка') + '</span>';
-  } catch {
-    msg.innerHTML = '<span class="err">Сервер не отвечает</span>';
+  function showMessage(text, isOk = false) {
+    msg.innerHTML = <span class="${isOk ? 'ok' : 'err'}">${text}</span>;
   }
-}
 
-async function log() {
-  msg.innerHTML = '';
-  const u = document.getElementById('username').value.trim();
-  const p = document.getElementById('password').value;
-  if (!u || !p) return msg.innerHTML = '<span class="err">Заполни всё</span>';
-  msg.innerHTML = '<span class="ok">Входим...</span>';
-  try {
-    const r = await fetch('/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
-    const d = await r.json();
-    if (d.success) {
-      currentUser = u;
-      msg.innerHTML = '<span class="ok">Ты внутри! Переходим...</span>';
-      setTimeout(() => {
-        document.getElementById('auth').classList.add('hidden');
-        document.getElementById('app').style.display = 'block';
+  async function reg() {
+    msg.innerHTML = '';
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    if (!u || !p) return showMessage('Заполни всё');
+    
+    showMessage('Регистрирую...', true);
+    try {
+      const r = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showMessage('Готово! Теперь войди', true);
+      } else {
+        showMessage(d.error || 'Ошибка');
+      }
+    } catch (err) {
+      showMessage('Сервер не отвечает');
+    }
+  }
+
+  async function log() {
+    msg.innerHTML = '';
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    if (!u || !p) return showMessage('Заполни всё');
+    
+    showMessage('Входим...', true);
+    try {
+      const r = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      });
+      const d = await r.json();
+      if (d.success) {
+        currentUser = u;
+        showMessage('Ты внутри!', true);
+        auth.classList.add('hidden');
+        app.style.display = 'block';
         showSection('feed');
         loadPosts();
         loadProfile();
         loadChatContacts();
-      }, 800);
-    } else {
-      msg.innerHTML = '<span class="err">' + (d.error || 'Неверно') + '</span>';
-    }
-  } catch {
-    msg.innerHTML = '<span class="err">Сервер не отвечает</span>';
-  }
-}
-
-function showSection(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-}
-
-async function loadPosts() {
-  try {
-    const r = await fetch('/posts');
-    const posts = await r.json();
-    document.getElementById('posts').innerHTML = posts.map(p => `
-      <div class="post">
-        <div class="post-header">
-          <div class="avatar"></div>
-          <strong>@${p.username}</strong>
-        </div>
-        <p>${p.text}</p>
-        ${p.photo ? <img src="${p.photo}" alt="Фото к посту" style="max-width:100%;border-radius:8px;margin-top:0.5rem;"> : ''}
-      </div>
-    `).join('') || '<p>Пока постов нет</p>';
-  } catch {}
-}
-
-function addTextPost() {
-  const text = prompt('Текст поста:');
-  if (!text) return;
-  const photo = prompt('Ссылка на фото (или пусто):');
-  fetch('/posts', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, text, photo})})
-    .then(() => loadPosts());
-}
-
-function addVoicePost() {
-  fetch('/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser})})
-    .then(r => r.json())
-    .then(d => {
-      if (d.success && d.user.premiumUntil) {
-        alert('Голосовой пост записан! (заглушка — премиум работает)');
       } else {
-        alert('Голосовые посты — только для премиум (299 VXR)');
+        showMessage(d.error || 'Неверно');
       }
-    });
-}
-
-async function loadProfile() {
-  try {
-    const r = await fetch('/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser})});
-    const d = await r.json();
-    if (d.success) {
-      const u = d.user;
-      document.getElementById('profile-name').textContent = u.name || currentUser;
-      document.getElementById('profile-username').textContent = currentUser;
-      document.getElementById('profile-photo').src = u.photo || 'https://via.placeholder.com/100?text=Фото';
-      document.getElementById('profile-balance').textContent = u.balance + ' VXR';
-      document.getElementById('profile-verified').textContent = u.
-  verified ? '✓' : '—';
-      document.getElementById('profile-premium').textContent = u.premiumUntil ? 'до ' + new Date(u.premiumUntil).toLocaleDateString('ru-RU') : 'нет';
+    } catch (err) {
+      showMessage('Сервер не отвечает');
     }
-  } catch {}
-}
+  }
 
-function editName() {
-  const newName = prompt('Новое имя:', document.getElementById('profile-name').textContent);
-  if (!newName) return;
-  fetch('/profile/update', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser, name:newName})})
-    .then(() => loadProfile());
-}
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    const clicked = event.target;
+    if (clicked.tagName === 'BUTTON') clicked.classList.add('active');
+  }
 
-function buyPremium() {
-  if (!confirm('Купить премиум за 299 VXR?')) return;
-  fetch('/premium/buy', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:currentUser})})
+  async function loadPosts() {
+    try {
+      const r = await fetch('/posts');
+      if (!r.ok) throw new Error('Ошибка загрузки постов');
+      const posts = await r.json();
+      document.getElementById('posts').innerHTML = posts.map(p => `
+        <div class="post">
+          <div class="post-header">
+            <div class="avatar"></div>
+            <strong>@${p.username}</strong>
+          </div>
+          <p>${p.text}</p>
+          ${p.photo ? <img src="${p.photo}" alt="Фото к посту" style="max-width:100%;border-radius:8px;margin-top:0.5rem;"> : ''}
+        </div>
+      `).join('') || '<p>Пока постов нет</p>';
+    } catch {
+      document.getElementById('posts').innerHTML = '<p>Не удалось загрузить посты</p>';
+    }
+  }
+
+  function addTextPost() {
+    const text = prompt('Текст поста:');
+    if (!text) return;
+    const photo = prompt('Ссылка на фото (или пусто):') || '';
+    fetch('/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, text, photo })
+    }).then(() => loadPosts());
+  }
+
+  function addVoicePost() {
+    // заглушка — можно доработать
+    alert('Голосовой пост (заглушка). Только для премиум.');
+  }
+
+  async function loadProfile() {
+    try {
+      const r = await fetch('/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser })
+      });
+      const d = await r.json();
+      if (d.success) {
+        const u = d.user;
+        document.getElementById('profile-name').textContent = u.name || currentUser;
+        document.getElementById('profile-username').textContent = currentUser;
+        document.getElementById('profile-photo').src = u.photo || 'https://via.placeholder.com/100?text=Фото';
+        document.getElementById('profile-balance').textContent = (u.balance || 0) + ' VXR';
+        document.getElementById('profile-verified').textContent = u.verified ? '✓' : '—';
+        document.getElementById('profile-premium').textContent = u.premiumUntil 
+          ? 'до ' + new Date(u.premiumUntil).toLocaleDateString('ru-RU') 
+          : 'нет';
+      }
+    } catch {}
+  }
+
+  function editName() {
+    const newName = prompt('Новое имя:', document.getElementById('profile-name').textContent);
+    if (!newName) return;
+    fetch('/profile/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, name: newName })
+    }).then(() => loadProfile());
+  }
+
+  function buyPremium() {
+    if (!confirm('Купить премиум за 299 VXR?')) return;
+    fetch('/premium/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser })
+    })
     .then(r => r.json())
     .then(d => {
       if (d.success) {
@@ -205,37 +238,39 @@ function buyPremium() {
         alert(d.error || 'Не хватает VXR');
       }
     });
-}
+  }
 
-async function loadChatContacts() {
-  // Заглушка — можно расширить до реального списка
-  document.getElementById('chat-contacts').innerHTML = '<li>Нет чатов пока</li>';
-}
+  function loadChatContacts() {
+    document.getElementById('chat-contacts').innerHTML = '<li>Нет чатов пока</li>';
+  }
 
-function startChat() {
-  const user = document.getElementById('chat-user').value.trim();
-  if (!user) return alert('Введи юзернейм');
-  document.getElementById('chat-area').innerHTML = `
-    <p>Чат с @${user}</p>
-    <input id="chat-msg" placeholder="Сообщение...">
-    <button onclick="sendChat('${user}')">Отправить</button>
-  `;
-}
+  function startChat() {
+    const user = document.getElementById('chat-user').value.trim();
+    if (!user) return alert('Введи юзернейм');
+    document.getElementById('chat-area').innerHTML = `
+      <p>Чат с @${user}</p>
+      <input id="chat-msg" placeholder="Сообщение...">
+      <button onclick="sendChat('${user}')">Отправить</button>
+    `;
+  }
 
-function sendChat(to) {
-  const msgText = document.getElementById('chat-msg').value.trim();
-  if (!msgText) return;
-  fetch('/messages/send', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({from:currentUser, to, text:msgText})})
-    .then(() => {
+  function sendChat(to) {
+    const msgText = document.getElementById('chat-msg').value.trim();
+    if (!msgText) return;
+    fetch('/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: currentUser, to, text: msgText })
+    }).then(() => {
       alert('Отправлено!');
       document.getElementById('chat-msg').value = '';
     });
-}
+  }
 
-document.getElementById('password').addEventListener('keypress', e => { if (e.key === 'Enter') log(); });
+  // Enter для входа
+  document.getElementById('password').addEventListener('keypress', e => {
+    if (e.key === 'Enter') log();
+  });
 </script>
 </body>
 </html>
-
-
-<script>
