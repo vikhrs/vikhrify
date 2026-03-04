@@ -1,155 +1,366 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Vikrify</title>
   <style>
-    body{font-family:system-ui,sans-serif;background:#111;color:#eee;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
-    #welcome{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:999}
-    #welcome.hidden{display:none}
-    .card{background:#1e1e1e;padding:24px;border-radius:16px;width:90%;max-width:380px}
-    input,button,textarea{width:100%;padding:14px;margin:10px 0;border-radius:10px;border:none;font-size:1.05em;box-sizing:border-box}
-    button{background:#0284c7;color:#fff;cursor:pointer;font-weight:600}
-    button:hover{background:#0369a1}
-    .tabs{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;display:flex;border-top:1px solid #333}
-    .tab{flex:1;text-align:center;padding:14px;cursor:pointer}
-    .tab.active{background:#0284c7}
-    #profile,#chats,#posts{flex:1;overflow-y:auto;display:none;padding-bottom:90px}
-    #profile.active,#chats.active,#posts.active{display:block}
-    .avatar{width:90px;height:90px;border-radius:50%;border:3px solid #0284c7;object-fit:cover}
-    .post{background:#222;padding:16px;margin:16px;border-radius:12px}
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    #welcome-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #welcome-screen.hidden { display: none; }
+
+    .auth-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 32px 24px;
+      width: 90%;
+      max-width: 380px;
+    }
+
+    h2 { text-align: center; margin-bottom: 24px; font-size: 1.6rem; }
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 10px 0;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 1rem;
+    }
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.3);
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #238636;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .main-content { flex: 1; padding: 16px; padding-bottom: 90px; }
+    .hidden { display: none !important; }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      background: #161b22;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #30363d;
+    }
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #30363d;
+    }
+    .post {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .post small { color: #8b949e; }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      display: flex;
+      z-index: 100;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #8b949e;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .nav-item.active {
+      color: #58a6ff;
+      font-weight: 600;
+    }
+
+    #chats-page, #posts-page { text-align: center; padding-top: 100px; color: #8b949e; }
   </style>
 </head>
 <body>
 
-<div id="welcome">
-  <div class="card">
-    <h2 style="text-align:center;margin-bottom:16px">Добро пожаловать в Vikrify</h2>
-    <input id="reg-name" placeholder="Имя">
-    <input id="reg-username" placeholder="Юзернейм">
-    <input id="reg-password" type="password" placeholder="Пароль">
-    <button onclick="register()">Зарегистрироваться</button>
+<!-- Экран приветствия / авторизации -->
+<div id="welcome-screen">
+  <div class="auth-card">
+    <h2>Добро пожаловать в Vikrify</h2>
 
-    <hr style="border:#444;margin:20px 0">
+    <div id="auth-forms">
+      <input id="name" placeholder="Имя" autocomplete="name" />
+      <input id="username" placeholder="Юзернейм (без @)" autocomplete="username" />
+      <input id="password" type="password" placeholder="Пароль" autocomplete="new-password" />
+      <button id="register-btn">Зарегистрироваться</button>
 
-    <input id="login-username" placeholder="Юзернейм">
-    <input id="login-password" type="password" placeholder="Пароль">
-    <button onclick="login()">Войти</button>
+      <div style="margin: 24px 0; text-align:center; color:#8b949e;">или</div>
+
+      <input id="login-username" placeholder="Юзернейм" autocomplete="username" />
+      <input id="login-password" type="password" placeholder="Пароль" autocomplete="current-password" />
+      <button id="login-btn">Войти</button>
+    </div>
   </div>
 </div>
 
-<div id="profile">
-  <div class="card" style="margin:16px">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
-      <img id="my-avatar" class="avatar" src="" alt="">
+<!-- Основной контент -->
+<div class="main-content">
+
+  <!-- Профиль -->
+  <div id="profile-page">
+    <div class="profile-header">
+      <img id="profile-avatar" class="avatar" src="https://via.placeholder.com/80?text=User" alt="avatar">
       <div>
-        <h2 id="my-name" style="margin:0"></h2>
-        <p id="my-username" style="margin:4px 0;color:#aaa"></p>
-        <p>Баланс: <b id="my-balance">0</b> VXR</p>
+        <h2 id="profile-name">—</h2>
+        <div style="color:#8b949e; margin:4px 0;">@<span id="profile-username">—</span></div>
+        <div>Баланс: <strong id="profile-balance">0</strong> VXR</div>
       </div>
     </div>
-    <h3>Мои посты</h3>
-    <div id="my-posts"></div>
+
+    <h3 style="margin:16px 0 8px;">Мои посты</h3>
+    <div id="my-posts-container"></div>
   </div>
-</div>
 
-<div id="chats" style="padding:20px;text-align:center;color:#aaa">
-  Чаты — в разработке
-</div>
-
-<div id="posts">
-  <div class="card" style="margin:16px">
-    <textarea id="post-text" rows="4" placeholder="Что нового?"></textarea>
-    <button onclick="createPost()">Опубликовать</button>
+  <!-- Чаты (пока заглушка) -->
+  <div id="chats-page" class="hidden">
+    <h3>Чаты</h3>
+    <p>Раздел в разработке</p>
   </div>
+
+  <!-- Создание постов -->
+  <div id="posts-page" class="hidden">
+    <div class="auth-card" style="margin:0 auto; max-width:500px;">
+      <h2>Новый пост</h2>
+      <textarea id="post-content" rows="6" placeholder="Что у тебя на уме?"></textarea>
+      <button id="publish-btn">Опубликовать</button>
+    </div>
+  </div>
+
 </div>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('profile')">Профиль</div>
-  <div class="tab" onclick="switchTab('chats')">Чаты</div>
-  <div class="tab" onclick="switchTab('posts')">Посты</div>
+<!-- Нижняя навигация -->
+<div class="bottom-nav">
+  <div class="nav-item active" data-page="profile">Профиль</div>
+  <div class="nav-item" data-page="chats">Чаты</div>
+  <div class="nav-item" data-page="posts">Посты</div>
 </div>
 
 <script>
 let currentUser = null;
 
-function hideWelcome(){document.getElementById("welcome").classList.add("hidden")}
-
-async function register(){
-  const name=document.getElementById("reg-name").value.trim();
-  const username=document.getElementById("reg-username").value.trim();
-  const password=document.getElementById("reg-password").value.trim();
-  if(!name||!username||!password)return alert("Заполни все поля");
-
-  try{
-    const r=await fetch("/api/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,username,password})});
-    const d=await r.json();
-    if(d.success){
-      currentUser=d.user;
-      loadProfile();
-      hideWelcome();
-    }else{alert(d.error||"Ошибка")}
-  }catch(e){alert("Ошибка сети")}
+// ─── Загрузка сохранённого пользователя ────────────────────────────
+function loadSavedUser() {
+  const saved = localStorage.getItem('vikrify_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      if (currentUser && currentUser.id) {
+        document.getElementById('welcome-screen').classList.add('hidden');
+        showPage('profile');
+        loadProfile();
+      }
+    } catch (e) {
+      localStorage.removeItem('vikrify_user');
+    }
+  }
 }
 
-async function login(){
-  const username=document.getElementById("login-username").value.trim();
-  const password=document.getElementById("login-password").value.trim();
-  if(!username||!password)return alert("Заполни поля");
+// ─── Показать страницу ─────────────────────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
 
-  try{
-    const r=await fetch("/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});
-    const d=await r.json();
-    if(d.
-       success){
-      currentUser=d.user;
-      loadProfile();
-      hideWelcome();
-    }else{alert(d.error||"Неверно")}
-  }catch(e){alert("Ошибка сети")}
+  document.getElementById('profile-page').classList.add('hidden');
+  document.getElementById('chats-page').classList.add('hidden');
+  document.getElementById('posts-page').classList.add('hidden');
+
+  document.getElementById(page + '-page').classList.remove('hidden');
+
+  if (page === 'profile') loadProfile();
 }
 
-function switchTab(t){
-  document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
-  event.target.classList.add("active");
-  document.querySelectorAll("#profile,#chats,#posts").forEach(el=>el.classList.remove("active"));
-  document.getElementById(t).classList.add("active");
-  if(t==="profile"&&currentUser)loadProfile();
+// ─── Регистрация ───────────────────────────────────────────────────
+document.getElementById('register-btn').onclick = async () => {
+  const name = document.getElementById('name').value.trim();
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+
+  if (!name  !username  !password) {
+    alert('Заполните все поля');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, username, password })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || 'Ошибка регистрации');
+      return;
+    }
+
+    currentUser = data.user;
+    localStorage.setItem('vikrify_user', JSON.stringify(currentUser));
+    document.getElementById('welcome-screen').classList.add('hidden');
+    showPage('profile');
+  } catch (err) {
+    alert('Ошибка сети');
+  }
+};
+
+// ─── Вход ──────────────────────────────────────────────────────────
+document.getElementById('login-btn').onclick = async () => {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+
+  if (!username || !password) {
+    alert('Введите юзернейм и пароль');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert(data.error || 'Неверные данные');
+      return;
+    }
+
+    currentUser = data.user;
+    localStorage.setItem('vikrify_user', JSON.stringify(currentUser));
+    document.getElementById('welcome-screen').classList.add('hidden');
+    showPage('profile');
+  } catch (err) {
+    alert('Ошибка сети');
+  }
+};
+
+// ─── Загрузка профиля ──────────────────────────────────────────────
+  async function loadProfile() {
+  if (!currentUser || !currentUser.id) return;
+
+  try {
+    const res = await fetch(`/api/me/${currentUser.id}`);
+    if (!res.ok) throw new Error('Профиль не найден');
+
+    currentUser = await res.json();
+    localStorage.setItem('vikrify_user', JSON.stringify(currentUser));
+
+    document.getElementById('profile-name').textContent = currentUser.name;
+    document.getElementById('profile-username').textContent = currentUser.username;
+    document.getElementById('profile-avatar').src = currentUser.avatar || 'https://via.placeholder.com/80?text=User';
+    document.getElementById('profile-balance').textContent = currentUser.balance ?? 0;
+
+    // Посты
+    const postsRes = await fetch(`/api/posts/${currentUser.id}`);
+    const posts = await postsRes.json();
+
+    const container = document.getElementById('my-posts-container');
+    container.innerHTML = posts.length === 0
+      ? '<p style="text-align:center; color:#8b949e; padding:40px 0;">Пока нет постов</p>'
+      : posts.map(p => `
+          <div class="post">
+            <p>${p.content.replace(/\n/g, '<br>')}</p>
+            <small>${new Date(p.createdAt).toLocaleString('ru-RU')}</small>
+          </div>
+        `).join('');
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-async function loadProfile(){
-  if(!currentUser)return;
-  try{
-    const r=await fetch(`/api/me/${currentUser.id}`);
-    currentUser=await r.json();
+// ─── Опубликовать пост ─────────────────────────────────────────────
+document.getElementById('publish-btn').onclick = async () => {
+  if (!currentUser) {
+    alert('Сначала войдите');
+    return;
+  }
 
-    document.getElementById("my-name").textContent=currentUser.name;
-    document.getElementById("my-username").textContent="@"+currentUser.username;
-    document.getElementById("my-avatar").src=currentUser.avatar;
-    document.getElementById("my-balance").textContent=currentUser.balance;
+  const content = document.getElementById('post-content').value.trim();
+  if (!content) {
+    alert('Напишите текст поста');
+    return;
+  }
 
-    const pr=await fetch(`/api/posts/${currentUser.id}`);
-    const myPosts=await pr.json();
+  try {
+    await fetch('/api/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id, content })
+    });
 
-    document.getElementById("my-posts").innerHTML=myPosts.length<1
-      ?'<p style="color:#777;text-align:center;padding:30px">Нет постов</p>'
-      :myPosts.map(p=>`<div class="post"><p>${p.content}</p><small style="color:#777">${new Date(p.createdAt).toLocaleString()}</small></div>`).join("");
-  }catch(e){console.error(e)}
-}
+    document.getElementById('post-content').value = '';
+    showPage('profile');
+  } catch (err) {
+    alert('Не удалось опубликовать');
+  }
+};
 
-async function createPost(){
-  if(!currentUser)return alert("Сначала войди");
-  const content=document.getElementById("post-text").value.trim();
-  if(!content)return alert("Напиши текст");
+// ─── Навигация ─────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.onclick = () => {
+    const page = item.dataset.page;
+    showPage(page);
+  };
+});
 
-  try{
-    await fetch("/api/posts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId:currentUser.id,content})});
-    document.getElementById("post-text").value="";
-    switchTab("profile");
-    loadProfile();
-  }catch(e){alert("Не опубликовалось")}
-}
+// ─── Старт ─────────────────────────────────────────────────────────
+loadSavedUser();
+if (currentUser) showPage('profile');
 </script>
 </body>
 </html>
