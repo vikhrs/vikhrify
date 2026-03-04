@@ -25,8 +25,8 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html'))
 const loggedUsers = {};      // socket.id → username
 const usernameToSocket = {}; // username → socket.id
 
-function findUserByUsername(un) {
-  return db.get('users').find({ username: un }).value();
+function findUserByUsername(username) {
+  return db.get('users').find({ username }).value();
 }
 
 function findUserByToken(token) {
@@ -34,7 +34,10 @@ function findUserByToken(token) {
 }
 
 function saveUser(user) {
-  db.get('users').find({ username: user.username }).assign(user).write();
+  db.get('users')
+    .find({ username: user.username })
+    .assign(user)
+    .write();
 }
 
 io.on('connection', (socket) => {
@@ -43,10 +46,11 @@ io.on('connection', (socket) => {
   // Регистрация
   socket.on('register', async ({ username, password, ref }) => {
     if (!username  username.length < 3  !password || password.length < 4) {
-      return socket.emit('error', 'Неверные данные');
+      return socket.emit('error', 'Юзернейм минимум 3 символа, пароль минимум 4');
     }
+
     if (findUserByUsername(username)) {
-      return socket.emit('error', 'Имя уже занято');
+      return socket.emit('error', 'Такой юзернейм уже занят');
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -54,7 +58,8 @@ io.on('connection', (socket) => {
 
     let referrer = null;
     if (ref) {
-      referrer = db.get('users').find(u => u.referralCode === ref || u.username === ref).value();
+      referrer = db.get('users').find({ referralCode: ref }).value() ||
+                 db.get('users').find({ username: ref }).value();
       if (referrer) {
         referrer.balance = (referrer.balance || 100) + 50;
         saveUser(referrer);
@@ -77,14 +82,19 @@ io.on('connection', (socket) => {
     };
 
     db.get('users').push(newUser).write();
-    socket.emit('register_success', { msg: 'Зарегистрировано! Теперь войдите.' });
+    socket.emit('register_success', { message: 'Зарегистрировано! Теперь войдите.' });
   });
 
-  // Логин
+  // Вход
   socket.on('login', async ({ username, password }) => {
     const user = findUserByUsername(username);
-    if (!user  !(await bcrypt.compare(password, user.passwordHash))  user.banned) {
-      return socket.emit('error', 'Неверный логин или пароль');
+    if (!user) {
+      return socket.emit('error', 'Пользователь не найден');
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatch || user.banned) {
+      return socket.emit('error', 'Неверный пароль или пользователь заблокирован');
     }
 
     const token = uuidv4();
@@ -106,7 +116,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Авто-вход при обновлении страницы
+  // Автовход по токену
   socket.on('auto_login', (token) => {
     const user = findUserByToken(token);
     if (user && !user.banned) {
@@ -128,16 +138,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Публикация поста
+  // Создание поста
   socket.on('post', ({ text, image, voice }) => {
     const username = loggedUsers[socket.id];
     if (!username) return;
-
     const user = findUserByUsername(username);
     if (!user || user.banned) return;
 
     if (voice && !user.premium) {
-      return socket.emit('error', 'Голосовые посты — только для премиум');
+      return socket.emit('error', 'Голосовые посты доступны только премиум-пользователям');
     }
 
     const post = {
@@ -155,16 +164,18 @@ io.on('connection', (socket) => {
     io.emit('new_post', post);
   });
 
-  // Получить все посты
+  // Запрос всех постов
   socket.on('get_posts', () => {
-    const posts = db.get('posts').sortBy('id').reverse().value();
+    const posts = db.get('posts')
+      .sortBy(p => -new Date(p.time).getTime())
+      .value();
     socket.emit('posts_list', posts);
   });
 
-  // Отправка сообщения в чат
+  // Отправка личного сообщения
   socket.on('send_message', ({ to, text }) => {
     const from = loggedUsers[socket.id];
-    if (!from || !text.trim()) return;
+    if (!from || !text?.trim()) return;
 
     const msg = {
       id: uuidv4(),
@@ -177,27 +188,39 @@ io.on('connection', (socket) => {
     db.get('messages').push(msg).write();
 
     socket.emit('new_message', msg);
-    const toSocket = usernameToSocket[to];
-    if (toSocket) io.to(toSocket).emit('new_message', msg);
+
+    const toSocketId = usernameToSocket[to];
+    if (toSocketId) {
+      io.to(toSocketId).emit('new_message', msg);
+    }
   });
 
-  // Получить список чатов
+  // Список чатов пользователя
   socket.on('get_chats', () => {
     const username = loggedUsers[socket.id];
     if (!username) return;
 
-    const msgs = db.get('messages').filter(m => m.from === username || m.to === username).value();
-    const chats = [...new Set(msgs.map(m => m.from === username ? m.to : m.from))];
-    socket.emit('chats_list', chats);
+    const msgs = db.get('messages')
+      .filter(m => m.from === username || m.to === username)
+      .value();
+
+    const chatPartners = [...new Set(
+      msgs.map(m => m.from === username ? m.to : m.from)
+    )];
+
+    socket.emit('chats_list', chatPartners);
   });
 
-  // Получить сообщения чата
+  // Сообщения конкретного чата
   socket.on('get_chat_messages', (withUser) => {
     const username = loggedUsers[socket.id];
     if (!username) return;
 
     const msgs = db.get('messages')
-      .filter(m => (m.from === username && m.to === withUser) || (m.from === withUser && m.to === username))
+      .filter(m =>
+        (m.from === username && m.to === withUser) ||
+        (m.from === withUser && m.to === username)
+      )
       .sortBy('id')
       .value();
 
@@ -210,60 +233,90 @@ io.on('connection', (socket) => {
     const user = findUserByUsername(username);
     if (!user) return;
 
-    if (displayName) user.displayName = displayName;
+    if (displayName?.trim()) user.displayName = displayName.trim();
     if (avatar) user.avatar = avatar;
 
     saveUser(user);
-    socket.emit('profile_updated', { displayName: user.displayName, avatar: user.avatar });
+    socket.emit('profile_updated', {
+      displayName: user.displayName,
+      avatar: user.avatar
+    });
   });
 
-  // Купить премиум
+  // Покупка премиум
   socket.on('buy_premium', () => {
     const username = loggedUsers[socket.id];
     const user = findUserByUsername(username);
-    if (!user  user.balance < 299  user.premium) {
-      return socket.emit('error', 'Недостаточно VXR или уже есть премиум');
+    if (!user) return;
+
+    if (user.balance < 299) {
+      return socket.emit('error', 'Недостаточно VXR');
+    }
+    if (user.premium) {
+      return socket.emit('error', 'У вас уже есть премиум');
     }
 
     user.balance -= 299;
     user.premium = true;
     saveUser(user);
 
-    socket.emit('premium_bought', { balance: user.balance, premium: true });
+    socket.emit('premium_bought', {
+      balance: user.balance,
+      premium: true
+    });
   });
 
-  // Админ-панель
+  // Админ-действия
   socket.on('admin_action', ({ action, username, adminPass, amount }) => {
     if (adminPass !== 'sehpy9-qiqjux-hofgyN') {
-      return socket.emit('error', 'Неверный пароль');
+      return socket.emit('error', 'Неверный пароль администратора');
     }
 
     const user = findUserByUsername(username);
-    if (!user) return;
+    if (!user) return socket.emit('error', 'Пользователь не найден');
 
-    if (action === 'verify') user.verified = true;
-    if (action === 'unverify') user.verified = false;
-    if (action === 'ban') user.banned = true;
-    if (action === 'unban') user.banned = false;
-    if (action === 'add_balance') user.balance += Number(amount) || 0;
+    switch (action) {
+      case 'verify':
+        user.verified = true;
+        break;
+      case 'unverify':
+        user.verified = false;
+        break;
+      case 'ban':
+        user.banned = true;
+        break;
+      case 'unban':
+        user.banned = false;
+        break;
+      case 'add_balance':
+        user.balance += Number(amount) || 0;
+        break;
+      default:
+        return socket.emit('error', 'Неизвестное действие');
+    }
 
     saveUser(user);
-    socket.emit('admin_success', 'Готово');
+    socket.emit('admin_success', 'Действие выполнено');
   });
 
   socket.on('get_all_users', () => {
-    const list = db.get('users').map(u => ({
-      username: u.username,
-      balance: u.balance,
-      verified: u.verified,
-      banned: u.banned
-    })).value();
-    socket.emit('user_list', list);
+    const usersList = db.get('users')
+      .map(u => ({
+        username: u.username,
+        balance: u.balance,
+        verified: u.
+          verified,
+        banned: u.banned
+      }))
+      .value();
+    socket.emit('user_list', usersList);
   });
 
   socket.on('disconnect', () => {
-    const un = loggedUsers[socket.id];
-    if (un) delete usernameToSocket[un];
+    const username = loggedUsers[socket.id];
+    if (username) {
+      delete usernameToSocket[username];
+    }
     delete loggedUsers[socket.id];
     console.log('Отключился:', socket.id);
   });
