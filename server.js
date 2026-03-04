@@ -37,7 +37,7 @@ app.get('/admin', (req, res) => {
 
 app.post('/register', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) return res.json({ success: false, error: 'Заполни всё' });
+  if (!username || !password) return res.json({ success: false, error: 'Заполни юзернейм и пароль' });
   if (users[username]) return res.json({ success: false, error: 'Юзернейм занят' });
 
   users[username] = {
@@ -55,7 +55,7 @@ app.post('/register', (req, res) => {
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!users[username] || users[username].password !== password) {
-    return res.json({ success: false, error: 'Неверно' });
+    return res.json({ success: false, error: 'Неверный логин или пароль' });
   }
   res.json({ success: true, username });
 });
@@ -126,9 +126,9 @@ app.get('/admin/data', (req, res) => {
 });
 
 app.get('/admin/verify', (req, res) => {
-  if (req.query.pass !== 'sehpy9-qiqjux-hofgyN') return res.send('Нет доступа');
-  const username = req.
-    query.user;
+  if (req.query.pass !== 'sehpy9-qiqjux-hofgyN') return res.
+    send('Нет доступа');
+  const username = req.query.user;
   const set = req.query.set === 'true';
   if (users[username]) {
     users[username].verified = set;
