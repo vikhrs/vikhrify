@@ -11,70 +11,66 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(join(__dirname, 'public'))); // если будут картинки/стили/скрипты
+app.use(express.static(join(__dirname, 'public')));
 
-// Отдаём главную страницу
-app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
-});
+app.get('/', (req, res) => res.sendFile(join(__dirname, 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(join(__dirname, 'admin.html')));
 
-// Отдаём админку
-app.get('/admin', (req, res) => {
-  res.sendFile(join(__dirname, 'admin.html'));
-});
+// Временное хранилище (потом БД)
+let users = [ ]; // {id, userId, content, image?}
 
-// ────────────────────────────────────────────────
-// Пример API (пока заглушки — расширяй по мере надобности)
-// ────────────────────────────────────────────────
+// Регистрация
+app.post('/api/register', (req, res) => {
+  const { username, password, name } = req.body;
+  if (!username  !password  !name) return res.status(400).json({ error: "Заполни всё" });
 
-let users = [
-  { id: 1, username: "vikhrs", name: "Вик", avatar: "https://i.pravatar.cc/150?u=vikhrs", balance: 1200, isPremium: false, isVerified: true, isBlocked: false }
-];
-
-let posts = [];
-
-// Получить текущего пользователя (заглушка)
-app.get('/api/me', (req, res) => {
-  res.json(users[0]);
-});
-
-// Обновить профиль
-app.patch('/api/profile', (req, res) => {
-  const { name, avatar } = req.body;
-  users[0].name = name || users[0].name;
-  if (avatar) users[0].avatar = avatar;
-  res.json(users[0]);
-});
-
-// Купить премиум за 299 VXR
-app.post('/api/premium/buy', (req, res) => {
-  if (users[0].balance >= 299) {
-    users[0].balance -= 299;
-    users[0].isPremium = true;
-    res.json({ success: true, balance: users[0].balance });
-  } else {
-    res.status(400).json({ success: false, message: "Недостаточно VXR" });
+  if (users.some(u => u.username === username.toLowerCase())) {
+    return res.status(409).json({ error: "Юзернейм занят" });
   }
+
+  const newUser = {
+    id: users.length + 1,
+    username: username.toLowerCase(),
+    name,
+    password, // в реале — хеш!
+    avatar: "" + username,
+    balance: 0,
+    isPremium: false,
+    isVerified: false,
+    isBlocked: false
+  };
+  users.push(newUser);
+  res.json({ success: true, user: newUser });
 });
 
-// Список всех пользователей для админки и поиска чатов
-app.get('/api/users', (req, res) => {
-  res.json(users);
+// Логин
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = users.find(u => u.username === username.toLowerCase() && u.password === password);
+  if (!user) return res.status(401).json({ error: "Неверный логин/пароль" });
+  res.json({ success: true, user });
 });
 
-// Пример создания поста
+// Текущий юзер (по id из фронта)
+app.get('/api/me/:id', (req, res) => {
+  const user = users.find(u => u.id == req.params.id);
+  if (!user) return res.status(404).json({ error: "Не найден" });
+  res.json(user);
+});
+
+// Посты текущего юзера
+app.get('/api/posts/:userId', (req, res) => {
+  const userPosts = posts.filter(p => p.userId == req.params.userId);
+  res.json(userPosts);
+});
+
 app.post('/api/posts', (req, res) => {
-  const post = { id: posts.length + 1, ...req.body, createdAt: new Date() };
+  const { userId, content } = req.body;
+  const post = { id: posts.length + 1, userId, content, createdAt: new Date() };
   posts.push(post);
   res.json(post);
 });
 
-app.get('/api/posts', (req, res) => {
-  res.json(posts);
-});
-
 app.listen(PORT, () => {
-  console.log(`Vikrify сервер → http://localhost:${PORT}`);
-  console.log(`Главная:       http://localhost:${PORT}/`);
-  console.log(`Админка:       http://localhost:${PORT}/admin`);
+  console.log(`Сайт на http://localhost:${PORT}`);
 });
