@@ -40,7 +40,7 @@ async function reg() {
     const d = await r.json();
     msg.innerHTML = d.success ? '<span class="ok">Готово, заходи</span>' : <span class="err">${d.error}</span>;
   } catch {
-    msg.innerHTML = '<span class="err">Сервер сдох</span>';
+    msg.innerHTML = '<span class="err">Сервер не отвечает</span>';
   }
 }
 
@@ -52,7 +52,7 @@ async function log() {
     const d = await r.json();
     msg.innerHTML = d.success ? '<span class="ok">Ты в деле</span>' : <span class="err">${d.error}</span>;
   } catch {
-    msg.innerHTML = '<span class="err">Сервер сдох</span>';
+    msg.innerHTML = '<span class="err">Сервер не отвечает</span>';
   }
 }
 
