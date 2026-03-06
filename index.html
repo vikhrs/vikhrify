@@ -1,53 +1,83 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vikhrify Messenger</title>
-    <style>
-        body { margin:0; background:#000; color:#fff; font-family: sans-serif; }
-        .page { display:none; padding:20px; }
-        .active { display:block; }
-        .nav { position:fixed; bottom:0; width:100%; display:flex; justify-content:space-around; background:#222; padding:15px; }
-    </style>
+    <title>Vikhrify</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="client.js" defer></script>
 </head>
 <body>
+    <div id="app">
+        <!-- Login/Register Screen -->
+        <div id="auth-screen" style="display: block;">
+            <h1>Welcome to Vikhrify!</h1>
+            <div id="register-form">
+                <h2>Регистрация</h2>
+                <input type="text" id="reg-name" placeholder="Имя">
+                <input type="text" id="reg-username" placeholder="Username">
+                <input type="password" id="reg-password" placeholder="Пароль">
+                <button onclick="register()">Зарегистрироваться</button>
+            </div>
+            <div id="login-form">
+                <h2>Вход</h2>
+                <input type="text" id="login-username" placeholder="Username">
+                <input type="password" id="login-password" placeholder="Пароль">
+                <button onclick="login()">Войти</button>
+            </div>
+            <button onclick="toggleForms()">У меня уже есть аккаунт / Зарегистрироваться</button>
+        </div>
 
-    <div id="feed" class="page active">
-        <h2>Лента</h2>
-        <div id="feed-content">Загрузка...</div>
+        <!-- Main App -->
+        <div id="main-screen" style="display: none;">
+            <!-- Burger Menu -->
+            <div id="burger-menu" class="menu-closed">
+                <button onclick="publishPost()">Опубликовать пост</button>
+                <input type="text" id="search-username" placeholder="Поиск по username">
+                <button onclick="searchUser()">Поиск</button>
+                <div id="search-results"></div>
+                <button onclick="switchAccount()">Переключить аккаунт</button>
+                <button onclick="logout()">Выйти</button>
+            </div>
+            <button id="burger-btn" onclick="toggleMenu()">☰</button>
+
+            <!-- Tabs -->
+            <div id="tabs">
+                <button onclick="showFeed()">Лента</button>
+                <button onclick="showChats()">Чаты</button>
+                <button onclick="showProfile()">Профиль</button>
+            </div>
+
+            <!-- Feed -->
+            <div id="feed" style="display: block;">
+                <div id="posts-list"></div>
+            </div>
+
+            <!-- Chats -->
+            <div id="chats" style="display: none;">
+                <div id="chats-list"></div>
+                <div id="chat-window" style="display: none;">
+                    <div id="chat-messages"></div>
+                    <input type="text" id="chat-input" placeholder="Сообщение">
+                    <button onclick="sendMessage()">Отправить</button>
+                </div>
+            </div>
+
+            <!-- Profile -->
+            <div id="profile" style="display: none;">
+                <img id="profile-avatar" src="default-avatar.png" alt="Аватар">
+                <h2 id="profile-name"></h2>
+                <p id="profile-username"></p>
+                <p id="profile-followers"></p>
+                <button onclick="editProfile()">Изменить профиль</button>
+                <div id="profile-posts"></div>
+            </div>
+
+            <!-- Multi Accounts -->
+            <div id="accounts-list" style="display: none;"></div>
+        </div>
     </div>
-
-    <div id="profile" class="page">
-        <h2>Профиль</h2>
-        <div id="profile-content">Загрузка данных...</div>
-    </div>
-
-    <nav class="nav">
-        <button onclick="loadFeed()">Лента</button>
-        <button onclick="loadProfile()">Профиль</button>
-    </nav>
-
-    <script>
-        // Умная кнопка "Лента"
-        async function loadFeed() {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById('feed').classList.add('active');
-            
-            const res = await fetch('/api/data');
-            const data = await res.json();
-            document.getElementById('feed-content').innerHTML = data.posts.map(p => `<p>${p.content}</p>`).join('');
-        }
-
-        // Умная кнопка "Профиль"
-        async function loadProfile() {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById('profile').classList.add('active');
-            
-            const res = await fetch('/api/data');
-            const data = await res.json();
-            document.getElementById('profile-content').innerHTML = `Имя: ${data.user.name}<br>Подписчики: ${data.user.followers}`;
-        }
-    </script>
 </body>
 </html>
