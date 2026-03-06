@@ -2,52 +2,52 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vikhrify Messenger</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <style>
-        /* Структура интерфейса */
-        body { margin:0; background:#000; color:#fff; font-family:sans-serif; }
-        .page { display:none; height:calc(100vh - 120px); overflow-y:auto; padding:20px; }
+        body { margin:0; background:#000; color:#fff; font-family: sans-serif; }
+        .page { display:none; padding:20px; }
         .active { display:block; }
-        .nav { position:fixed; bottom:0; width:100%; display:flex; justify-content:space-around; background:#111; padding:20px; }
-        .glass { background:rgba(30,30,30,0.8); backdrop-filter:blur(10px); }
+        .nav { position:fixed; bottom:0; width:100%; display:flex; justify-content:space-around; background:#222; padding:15px; }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <div id="feed" class="page active"><h2>Лента</h2><div id="posts"></div></div>
-    <div id="chats" class="page"><h2>Чаты</h2><div id="chat-list"></div></div>
-    <div id="profile" class="page"><h2>Профиль</h2><div id="p-data"></div></div>
-    
-    <nav class="nav glass">
-        <button onclick="show('feed')">Лента</button>
-        <button onclick="show('chats')">Чаты</button>
-        <button onclick="show('profile')">Профиль</button>
+    <div id="feed" class="page active">
+        <h2>Лента</h2>
+        <div id="feed-content">Загрузка...</div>
+    </div>
+
+    <div id="profile" class="page">
+        <h2>Профиль</h2>
+        <div id="profile-content">Загрузка данных...</div>
+    </div>
+
+    <nav class="nav">
+        <button onclick="loadFeed()">Лента</button>
+        <button onclick="loadProfile()">Профиль</button>
     </nav>
-</div>
 
-<script>
-    const KEY = "SECRET_KEY";
-    
-    // Постоянное автообновление системы (Poll)
-    setInterval(async () => {
-        const res = await fetch('/api/sync');
-        const data = await res.json();
-        renderData(data);
-    }, 2000);
+    <script>
+        // Умная кнопка "Лента"
+        async function loadFeed() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('feed').classList.add('active');
+            
+            const res = await fetch('/api/data');
+            const data = await res.json();
+            document.getElementById('feed-content').innerHTML = data.posts.map(p => `<p>${p.content}</p>`).join('');
+        }
 
-    function renderData(data) {
-        // Отрисовка постов
-        document.getElementById('posts').innerHTML = data.posts.map(p => `<div>${p.content}</div>`).join('');
-        // Дешифровка чатов
-        document.getElementById('chat-list').innerHTML = data.chats.map(c => {
-            const bytes = CryptoJS.AES.decrypt(c.msg, KEY);
-            return `<div>${bytes.toString(CryptoJS.enc.Utf8)}</div>`;
-        }).join('');
-    }
-
-    function show(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-</script>
+        // Умная кнопка "Профиль"
+        async function loadProfile() {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('profile').classList.add('active');
+            
+            const res = await fetch('/api/data');
+            const data = await res.json();
+            document.getElementById('profile-content').innerHTML = `Имя: ${data.user.name}<br>Подписчики: ${data.user.followers}`;
+        }
+    </script>
 </body>
 </html>
