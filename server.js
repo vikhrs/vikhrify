@@ -3,48 +3,48 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = dirname(import.meta.url);
 const app = express();
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.static(__dirname));
 
-// База данных
 let db = { users: [], posts: [], chats: [] };
 
-async function loadDB() {
+// Профессиональная загрузка и сохранение
+async function syncDB() {
     try {
-        db.users = JSON.parse(await fs.readFile(join(__dirname, 'users.json'), 'utf8'));
-        db.posts = JSON.parse(await fs.readFile(join(__dirname, 'posts.json'), 'utf8'));
-    } catch (e) { db = { users: [], posts: [] }; }
+        const u = await fs.readFile(join(__dirname, 'users.json'), 'utf8');
+        const p = await fs.readFile(join(__dirname, 'posts.json'), 'utf8');
+        const c = await fs.readFile(join(__dirname, 'chats.json'), 'utf8');
+        db = { users: JSON.parse(u), posts: JSON.parse(p), chats: JSON.parse(c) };
+    } catch { db = { users: [], posts: [], chats: [] }; }
 }
-await loadDB();
+await syncDB();
 
-async function saveDB() {
+async function commit() {
     await fs.writeFile(join(__dirname, 'users.json'), JSON.stringify(db.users, null, 2));
     await fs.writeFile(join(__dirname, 'posts.json'), JSON.stringify(db.posts, null, 2));
+    await fs.writeFile(join(__dirname, 'chats.json'), JSON.stringify(db.chats, null, 2));
 }
 
-// Роуты API
-app.post('/api/register', async (req, res) => {
-    const { name, username, password } = req.body;
-    if (db.users.find(u => u.username === username)) return res.json({ success: false, error: "Занят!" });
-    const user = { id: Date.now(), name, username, password, followers: [] };
-    db.users.push(user);
-    await saveDB();
-    res.json({ success: true, user });
-});
+// Полноценный API
+app.get('/api/sync', (req, res) => res.json(db));
 
-app.post('/api/follow', async (req, res) => {
-    const { followerId, targetId } = req.body;
-    const target = db.users.find(u => u.id === targetId);
-    if (target) {
-        if (!target.followers.includes(followerId)) target.followers.push(followerId);
-        else target.followers = target.followers.filter(id => id !== followerId);
-        await saveDB();
+app.post('/api/admin/action', async (req, res) => {
+    const { userId, type, value } = req.body;
+    const u = db.users.find(x => x.id === userId);
+    if(u) {
+        if(type === 'ban') u.isBanned = value;
+        if(type === 'verify') u.isVerified = value;
+        await commit();
     }
     res.json({ success: true });
 });
 
-app.get('/', (req, res) => res.sendFile(join(__dirname, 'index.html')));
-app.get('/api/data', (req, res) => res.json(db));
+app.post('/api/chat', async (req, res) => {
+    db.chats.push({ ...req.body, ts: Date.now() });
+    await commit();
+    res.json({ success: true });
+});
 
-app.listen(3000, () => console.log('Messenger Server Online'));
+app.listen(3000, () => console.log('Vikhrify Messenger Engine v1.0.0 is running'));
