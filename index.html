@@ -2,53 +2,70 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Vikhrify | Живой проект</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vikhrify Messenger</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <style>
-        body { margin:0; font-family:sans-serif; background:#050505; color:#eee; }
-        .glass { background:rgba(30,30,30,0.6); backdrop-filter:blur(15px); border:1px solid rgba(255,255,255,0.1); }
-        #auth { position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999; display:flex; align-items:center; justify-content:center; }
-        .card { padding:30px; border-radius:20px; width:300px; text-align:center; }
-        input, button { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:none; box-sizing:border-box; background:#222; color:white; }
-        button { background:#0284c7; cursor:pointer; }
-        .burger { position:fixed; left:20px; top:20px; z-index:100; cursor:pointer; font-size:24px; }
-        #sidebar { position:fixed; left:-260px; top:0; width:260px; height:100%; transition:0.3s; padding:60px 20px; z-index:99; }
-        #sidebar.open { left:0; }
-        .section { display:none; padding:80px 20px; }
+        :root { --bg: #050505; --text: #eee; --accent: #0284c7; }
+        .light-theme { --bg: #ffffff; --text: #111; }
+        body { margin:0; background:var(--bg); color:var(--text); font-family:sans-serif; height:100vh; overflow:hidden; }
+        
+        /* Glassmorphism */
+        .glass { background: rgba(30,30,30,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+        .light-theme .glass { background: rgba(255,255,255,0.7); }
+
+        /* Auth */
+        #auth { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(10px); }
+        .card { width:90%; max-width:320px; padding:25px; border-radius:20px; text-align:center; }
+        
+        /* Mobile Layout */
+        #app { display:none; height:100%; display:flex; flex-direction:column; }
+        .section { flex:1; overflow-y:auto; padding:20px; padding-bottom:80px; display:none; }
         .section.active { display:block; }
-        nav { position:fixed; bottom:0; left:0; right:0; display:flex; padding:10px; }
-        nav button { flex:1; }
+        
+        /* Burger */
+        #sidebar { position:fixed; top:0; left:-280px; width:260px; height:100%; z-index:500; transition:0.3s; padding:60px 20px; }
+        #sidebar.open { left:0; }
+
+        /* Helpers */
+        .verified::after { content: " ✔"; color: #1da1f2; }
+        .avatar { width:60px; height:60px; border-radius:50%; object-fit:cover; }
+        input, button { width:100%; padding:14px; margin:10px 0; border-radius:12px; border:none; background:#222; color:white; }
+        button { background:var(--accent); cursor:pointer; }
     </style>
 </head>
 <body>
 
 <div id="auth">
     <div class="card glass">
-        <h2 id="msg">Добро пожаловать в Vikhrify!</h2>
-        <input id="in-name" placeholder="Ваше Имя">
-        <input id="in-user" placeholder="Юзернейм">
-        <input id="in-pass" type="password" placeholder="Пароль">
-        <button onclick="register()">Регистрация</button>
-        <button onclick="login()">Войти</button>
+        <h2>Vikhrify</h2>
+        <input id="reg-name" placeholder="Имя">
+        <input id="reg-user" placeholder="Username (англ)">
+        <input id="reg-pass" type="password" placeholder="Пароль">
+        <button onclick="auth('register')">Регистрация</button>
+        <button onclick="auth('login')">Войти</button>
     </div>
 </div>
 
-<div id="burger" class="burger" onclick="toggleSidebar()">☰</div>
-<div id="sidebar" class="glass">
-    <button onclick="show('profile')">Профиль</button>
-    <button onclick="logout()">Выйти</button>
-</div>
+<div id="app">
+    <div class="burger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</div>
+    <div id="sidebar" class="glass">
+        <button onclick="show('profile')">Профиль</button>
+        <button onclick="publishPostFromMenu()">Создать пост</button>
+        <button onclick="toggleTheme()">Сменить тему</button>
+        <button onclick="logout()">Выйти</button>
+    </div>
 
-<div id="app" style="display:none">
     <div id="feed" class="section active">
         <h2>Лента</h2>
-        <textarea id="post-text" placeholder="Что нового?"></textarea>
-        <button onclick="publishPost()">Опубликовать</button>
         <div id="posts-list"></div>
     </div>
-    <div id="chats" class="section"><h2>Чаты</h2></div>
-    <div id="profile" class="section"><h2>Профиль</h2></div>
+    
+    <div id="profile" class="section">
+        <div id="profile-content"></div>
+    </div>
 
-    <nav class="glass">
+    <nav class="glass" style="position:fixed; bottom:0; width:100%; display:flex;">
         <button onclick="show('feed')">Лента</button>
         <button onclick="show('chats')">Чаты</button>
         <button onclick="show('profile')">Профиль</button>
@@ -56,47 +73,47 @@
 </div>
 
 <script>
-    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-    function show(id) { 
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active'); 
-    }
-    
-    async function register() {
-        const res = await fetch('/api/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                name: document.getElementById('in-name').value,
-                username: document.getElementById('in-user').value,
-                password: document.getElementById('in-pass').value
-            })
-        });
-        if((await res.json()).success) document.getElementById('msg').innerText = "Успешно! Теперь войди.";
-    }
+    // Theme logic
+    function toggleTheme() { document.body.classList.toggle('light-theme'); }
 
-    async function login() {
-        const res = await fetch('/api/login', {
+    // Auth logic with uniqueness check
+    async function auth(type) {
+        const username = document.getElementById('reg-user').value.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const password = document.getElementById('reg-pass').value;
+        const name = document.getElementById('reg-name').value;
+        
+        const res = await fetch(`/api/${type}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: document.getElementById('in-user').value,
-                password: document.getElementById('in-pass').value
-            })
+            body: JSON.stringify({username, password, name})
         });
         const data = await res.json();
+        
         if(data.success) {
-            localStorage.setItem('vikhrify_user', JSON.stringify(data.user));
+            localStorage.setItem('user', JSON.stringify(data.user));
             location.reload();
+        } else {
+            alert(data.error || "Ошибка! Юзернейм может быть занят.");
         }
     }
 
-    if(localStorage.getItem('vikhrify_user')) {
-        document.getElementById('auth').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
+    // Auto-update
+    setInterval(async () => {
+        const res = await fetch('/api/all');
+        const d = await res.json();
+        renderPosts(d.posts);
+    }, 3000);
+
+    function renderPosts(posts) {
+        document.getElementById('posts-list').innerHTML = posts.map(p => `
+            <div class="post glass" onclick="viewProfile(${p.userId})">
+                <b class="${p.isVerified ? 'verified' : ''}">${p.name}</b>
+                <p>${p.content}</p>
+            </div>
+        `).join('');
     }
 
-    function logout() { localStorage.removeItem('vikhrify_user'); location.reload(); }
+    function logout() { localStorage.clear(); location.reload(); }
 </script>
 </body>
 </html>
