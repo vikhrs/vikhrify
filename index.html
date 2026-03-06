@@ -1,171 +1,59 @@
-<!-- index.html (полная замена приветственного экрана) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vikhrify</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: #e0e0ff;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #app { width: 100%; max-width: 420px; padding: 20px; }
-
-        /* Auth Screen */
-        #auth-screen {
-            background: rgba(30, 30, 60, 0.85);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            padding: 40px 28px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            border: 1px solid rgba(100,100,255,0.15);
-        }
-        h1 {
-            text-align: center;
-            font-size: 2.4rem;
-            margin-bottom: 12px;
-            background: linear-gradient(90deg, #a78bfa, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .subtitle {
-            text-align: center;
-            color: #a0a0ff;
-            margin-bottom: 32px;
-            font-size: 1.05rem;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            position: relative;
-        }
-        input {
-            width: 100%;
-            padding: 14px 16px 14px 48px;
-            border: none;
-            border-radius: 12px;
-            background: rgba(50,50,90,0.6);
-            color: white;
-            font-size: 1rem;
-            transition: all 0.25s;
-        }
-        input:focus {
-            outline: none;
-            background: rgba(70,70,110,0.8);
-            box-shadow: 0 0 0 2px rgba(124,58,237,0.5);
-        }
-        .icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #a0a0ff;
-            font-size: 1.2rem;
-        }
-
-        button {
-            width: 100%;
-            padding: 14px;
-            margin: 8px 0;
-            border: none;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        #btn-register {
-            background: linear-gradient(90deg, #7c3aed, #a78bfa);
-            color: white;
-        }
-        #btn-login {
-            background: linear-gradient(90deg, #4f46e5, #6366f1);
-            color: white;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(124,58,237,0.4);
-        }
-
-        .toggle-link {
-            text-align: center;
-            margin-top: 20px;
-            color: #a0a0ff;
-            cursor: pointer;
-        }
-        .toggle-link:hover { color: #c4b5fd; text-decoration: underline; }
-
-        .error-msg {
-            color: #ff6b6b;
-            font-size: 0.9rem;
-            margin-top: 6px;
-            text-align: center;
-            display: none;
-        }
-
-        /* Hide main screen initially */
-        #main-screen { display: none; }
-    </style>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="client.js" defer></script>
+    <title>Vikhrify | Лента и Чаты</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
-<body>
-    <div id="app">
-        <!-- Приветственный экран (регистрация / вход) -->
-        <div id="auth-screen">
-            <h1>Vikhrify</h1>
-            <p class="subtitle">Добро пожаловать!</p>
-
-            <!-- Форма регистрации -->
-            <div id="register-form">
-                <div class="form-group">
-                    <i class="fas fa-user icon"></i>
-                    <input type="text" id="reg-name" placeholder="Имя" required>
+<body class="bg-gray-900 text-white font-sans">
+    
+    <div id="burger-menu" class="fixed left-0 top-0 h-full w-64 bg-gray-800 transform -translate-x-full transition-transform z-50">
+        <div class="p-5">
+            <div id="accounts-list" class="mb-5 border-b border-gray-700 pb-3">
+                <p class="text-xs text-gray-400">Аккаунты</p>
                 </div>
-                <div class="form-group">
-                    <i class="fas fa-at icon"></i>
-                    <input type="text" id="reg-username" placeholder="Username" required>
-                </div>
-                <div class="form-group">
-                    <i class="fas fa-lock icon"></i>
-                    <input type="password" id="reg-password" placeholder="Пароль" required>
-                </div>
-                <button id="btn-register" onclick="register()">Создать аккаунт</button>
-                <div id="reg-error" class="error-msg"></div>
-            </div>
-
-            <!-- Форма входа (скрыта по умолчанию) -->
-            <div id="login-form" style="display: none;">
-                <div class="form-group">
-                    <i class="fas fa-at icon"></i>
-                    <input type="text" id="login-username" placeholder="Username" required>
-                </div>
-                <div class="form-group">
-                    <i class="fas fa-lock icon"></i>
-                    <input type="password" id="login-password" placeholder="Пароль" required>
-                </div>
-                <button id="btn-login" onclick="login()">Войти</button>
-                <div id="login-error" class="error-msg"></div>
-            </div>
-
-            <div class="toggle-link" id="toggle-link" onclick="toggleForms()">
-                Уже есть аккаунт? Войти
-            </div>
-        </div>
-
-        <!-- Основной экран приложения (остаётся как был) -->
-        <div id="main-screen">
-            <!-- ... весь твой предыдущий код основного интерфейса (бургер, лента, чаты, профиль и т.д.) ... -->
-            <!-- Просто вставь сюда свой предыдущий HTML-код main-screen без изменений -->
+            <button onclick="openPublishModal()" class="block w-full text-left py-2 hover:text-blue-400">Опубликовать пост</button>
+            <button onclick="openSearch()" class="block w-full text-left py-2 hover:text-blue-400">Поиск людей</button>
+            <button onclick="logout()" class="block w-full text-left py-2 text-red-500 mt-10">Выйти из аккаунта</button>
         </div>
     </div>
+
+    <header class="p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900 z-40">
+        <button onclick="toggleMenu()" class="text-2xl">☰</button>
+        <h1 class="text-xl font-bold tracking-widest text-blue-500">VIKHRIFY</h1>
+        <div id="current-user-avatar" class="w-10 h-10 bg-gray-700 rounded-full"></div>
+    </header>
+
+    <main class="max-w-2xl mx-auto p-4">
+        <div id="feed" class="space-y-6">
+            </div>
+    </main>
+
+    <script>
+        const socket = io();
+        
+        // Логика переключения аккаунтов (Мультиаккаунт)
+        let currentAccount = JSON.parse(localStorage.getItem('active_acc'));
+        
+        function toggleMenu() {
+            const menu = document.getElementById('burger-menu');
+            menu.classList.toggle('-translate-x-full');
+        }
+
+        socket.on('feed_update', (post) => {
+            const postHTML = `
+                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700">
+                    <div class="flex items-center mb-2">
+                        <img src="${post.author.avatar}" class="w-8 h-8 rounded-full mr-2 cursor-pointer" onclick="viewProfile('${post.author.username}')">
+                        <span class="font-bold">${post.author.name}</span>
+                        ${post.author.verified ? '<span class="ml-1 text-blue-400">✔</span>' : ''}
+                    </div>
+                    <p class="text-gray-200">${post.content}</p>
+                </div>
+            `;
+            document.getElementById('feed').insertAdjacentHTML('afterbegin', postHTML);
+        });
+    </script>
 </body>
 </html>
