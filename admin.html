@@ -1,26 +1,30 @@
-<!-- admin.html -->
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vikhrify Admin Panel</title>
-    <link rel="stylesheet" href="admin-styles.css">
-    <script src="admin-client.js" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h1>Админ Панель Vikhrify</h1>
-    <div id="stats">
-        <p>Зарегистрировано пользователей: <span id="users-count"></span></p>
-        <p>Опубликовано постов: <span id="posts-count"></span></p>
+<body class="bg-black text-green-500 p-8 font-mono">
+    <h2 class="text-2xl mb-5">TERMINAL ACCESS: VIKHRIFY ADMIN</h2>
+    
+    <div class="grid grid-cols-3 gap-4 mb-10">
+        <div class="border border-green-500 p-4">Юзеров: <span id="u-count">0</span></div>
+        <div class="border border-green-500 p-4">Постов: <span id="p-count">0</span></div>
+        <button class="bg-red-900 text-white p-2">УДАЛИТЬ ВСЕ ПОСТЫ</button>
     </div>
-    <input type="text" id="admin-search-username" placeholder="Поиск по username">
-    <button onclick="adminSearchUser()">Поиск</button>
-    <div id="admin-user-info"></div>
-    <button onclick="toggleVerification()">Выдать/Забрать верификацию</button>
-    <button onclick="toggleBlock()">Заблокировать/Разблокировать</button>
-    <button onclick="viewUserChats()">Просмотреть чаты</button>
-    <div id="user-chats"></div>
-    <button onclick="deleteAllPosts()">Удалить все посты пользователя</button>
+
+    <div class="mb-5">
+        <input id="search-user" class="bg-gray-900 border border-green-500 p-2 w-64" placeholder="Username search...">
+        <button onclick="inspectUser()" class="bg-green-600 text-black px-4 py-2 ml-2">ИНСПЕКТИРОВАТЬ</button>
+    </div>
+
+    <div id="user-control" class="hidden border border-green-500 p-5">
+        <h3 id="target-name">User: </h3>
+        <div class="mt-4 space-x-4">
+            <button onclick="action('verify')" class="border border-blue-500 px-2">Выдать галочку</button>
+            <button onclick="action('ban')" class="border border-red-500 px-2">Заблокировать</button>
+            <button onclick="viewChats()" class="border border-yellow-500 px-2">Просмотреть чаты (Anti-Terror)</button>
+        </div>
+    </div>
 </body>
 </html>
