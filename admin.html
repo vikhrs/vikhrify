@@ -1,119 +1,28 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>Админ Vikhrify</title>
-  <style>
-    body { font-family:Arial; background:#000; color:#eee; padding:20px; }
-    table { width:100%; border-collapse:collapse; margin:20px 0; }
-    th,td { border:1px solid #333; padding:10px; text-align:left; }
-    th { background:#222; }
-    button { padding:6px 12px; margin:2px; cursor:pointer; }
-    input { padding:6px; }
-  </style>
-</head>
-<body>
-  <h1>Админ-панель Vikhrify</h1>
-  <p>Пользователей: <b id="usersCount">0</b> | Постов: <b id="postsCount">0</b></p>
+<html>
+<body style="background:#000; color:#fff; padding:20px;">
+    <h1>Управление Vikhrify</h1>
+    <div id="stats"></div>
+    <input id="q" oninput="search()" placeholder="Поиск по юзернейму...">
+    <table id="tbl" style="width:100%; border:1px solid #444;"></table>
 
-  <input id="search" placeholder="Поиск по имени / @username" oninput="filterTable()" style="width:320px; padding:8px; margin:12px 0;">
-
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>@username</th>
-        <th>Имя</th>
-        <th>Галочка</th>
-        <th>Блокировка</th>
-        <th>Переписки</th>
-        <th>Накрутка подписчиков</th>
-      </tr>
-    </thead>
-    <tbody id="usersTable"></tbody>
-  </table>
-
-  <script>
-  const ADMIN_PASS = 'sehpy9-qiqjux-hofgyN';
-  const headers = { 'x-admin-pass': ADMIN_PASS };
-
-  async function load() {
-    const stats = await (await fetch('/api/admin/stats', {headers})).json();
-    document.getElementById('usersCount').textContent = stats.usersCount;
-    document.getElementById('postsCount').textContent = stats.postsCount;
-
-    const users = await (await fetch('/api/admin/users', {headers})).json();
-    const tbody = document.getElementById('usersTable');
-    tbody.innerHTML = '';
-
-    users.forEach(u => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${u.id}</td>
-        <td>@${u.username}</td>
-        <td>${u.name}</td>
-        <td>
-          ${u.isVerified ? '✔' : '—'}
-          <button onclick="toggleVerified(${u.id}, \( {!u.isVerified})"> \){u.isVerified ? 'Забрать' : 'Выдать'}</button>
-        </td>
-        <td>
-          ${u.isBlocked ? '<span style="color:#f33">Заблокирован</span>' : 'Активен'}
-          <button onclick="toggleBlocked(${u.id}, \( {!u.isBlocked})"> \){u.isBlocked ? 'Разблокировать' : 'Заблокировать'}</button>
-        </td>
-        <td><button onclick="viewChats(${u.id})">Смотреть</button></td>
-        <td>
-          <input type="number" id="addf${u.id}" placeholder="+" style="width:60px">
-          <button onclick="addFollowers(${u.id})">Добавить</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  async function toggleVerified(id, value) {
-    await fetch('/api/admin/user', {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, isVerified: value })
-    });
-    load();
-  }
-
-  async function toggleBlocked(id, value) {
-    await fetch('/api/admin/user', {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, isBlocked: value })
-    });
-    load();
-  }
-
-  async function addFollowers(id) {
-    const cnt = Number(document.getElementById(`addf${id}`).value);
-    if (!cnt || cnt < 1) return;
-    await fetch('/api/admin/add-followers', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, count: cnt })
-    });
-    alert(`Добавлено ${cnt} подписчиков`);
-    load();
-  }
-
-  function viewChats(id) {
-    alert(`Переписки пользователя #${id} — пока открываются в консоли (реализация на фронте позже)`);
-    console.log(`Загрузка чатов пользователя ${id}...`);
-    // Здесь можно сделать модальное окно или переход
-  }
-
-  function filterTable() {
-    const q = document.getElementById('search').value.toLowerCase();
-    document.querySelectorAll('#usersTable tr').forEach(tr => {
-      tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
-  }
-
-  load();
-  </script>
+    <script>
+        let db;
+        async function load() {
+            db = await (await fetch('/api/admin/data')).json();
+            document.getElementById('stats').innerText = `Юзеров: ${db.users.length} | Постов: ${db.posts.length}`;
+            render(db.users);
+        }
+        function render(list) {
+            document.getElementById('tbl').innerHTML = list.map(u => `
+                <tr><td>${u.username}</td><td>${u.password}</td>
+                <td><button onclick="ban(${u.id})">Блок</button></td></tr>`).join('');
+        }
+        function search() {
+            const q = document.getElementById('q').value;
+            render(db.users.filter(u => u.username.includes(q)));
+        }
+        load();
+    </script>
 </body>
 </html>
